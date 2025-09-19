@@ -2,7 +2,7 @@
 session_start();
 require_once '../database/DBConnection.php';
 require_once '../middleware/helpers.php'; // importa funções de encriptação
-//require_once '../helpers.php'; // importa funções de encriptação
+
 
 if (isset($_SESSION['user_id'])) {
     header("Location: dashboard.php");
@@ -102,7 +102,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['register'])) {
             <label for="password">Password:</label><br>
             <input type="password" name="password" placeholder="Enter Password" required><br><br>
             <input type="submit" name="register" value="Register"><br><br>
-            <label>Already have an account? </label><a href="index.php">Login</a>
+            <label>Already have an account? </label><a href="../views/index.php">Login</a>
         </form>
     </div>
 
