@@ -1,0 +1,65 @@
+CREATE DATABASE todo_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE todo_db;
+
+-- Tabela 1: users (usuários)
+DROP TABLE IF EXISTS users;
+CREATE TABLE users (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  username VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  role ENUM('admin', 'usuario', 'gestor') DEFAULT 'usuario',
+  otp VARCHAR(6) DEFAULT NULL,
+  otp_expiry DATETIME DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- Tabela 2: categories (categorias de tarefas)
+DROP TABLE IF EXISTS categories;
+CREATE TABLE categories (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_category (user_id, name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabela 3: tasks (tarefas)
+DROP TABLE IF EXISTS tasks;
+CREATE TABLE tasks (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    description TEXT,
+    category_id INT NULL,
+    due_date DATE NULL,
+    status ENUM('pendente', 'em_progresso', 'completo') DEFAULT 'pendente',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabela 4: session_logs (logs de sessões para auditoria)
+DROP TABLE IF EXISTS session_logs;
+CREATE TABLE session_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    session_id VARCHAR(255) NOT NULL,
+    login_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    logout_time TIMESTAMP NULL,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_session (session_id),
+    INDEX idx_user (user_id)
+);
+
+
+INSERT INTO users (username, email, password, role, otp, otp_expiry)
+VALUES 
+('admin', 'sheltonavelinojunior@gmail.com', '123456', 'admin', NULL, NULL),
+('SaMMy', 'sheltonavelinomatsinhe@gmail.com', 'senha123', 'usuario', '987654', NOW() + INTERVAL 10 MINUTE),
+('Shelton', 'matsinhesheltona@gmail.com', 'abc123', 'gestor', NULL, NULL);
+
