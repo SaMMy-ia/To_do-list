@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../database/DBConnection.php';
+require_once '../models/sessaoDAO.php';
 
 if (!isset($_SESSION['temp_user'])) {
     header("Location: ../views/index.php");
@@ -25,24 +26,51 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if ($data) {
         $otp_expiry = strtotime($data['otp_expiry']);
         if ($otp_expiry >= time()) {
-            // Login válido
+            // Login válido - Iniciar controle de sessão
             $_SESSION['user_id'] = $data['id'];
-            $_SESSION['role'] = $data['role']; // Armazena o papel do usuário na sessão
-            unset($_SESSION['temp_user']);
-
-            // Redireciona com base no tipo de usuário
-            switch ($data['role']) {
-                case 'admin':
-                    header("Location: ../views/admin/dashboardAdmin.php");
-                    break;
-                case 'user':
-                    header("Location: ../views/public/dashboard.php");
-                    break;
-                default:
-                    header("Location: dashboard.php");
-                    break;
+            $_SESSION['role'] = $data['role'];
+            
+            // Registrar sessão no banco de dados
+            try {
+                $sessaoDAO = new SessaoDAO($conn);
+                
+                // Gerar session ID único
+                $sessionId = session_id();
+                $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+                $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
+                
+                // Registrar a sessão
+                $sessaoDAO->registrarSessao($sessionId, $data['id'], $ipAddress, $userAgent);
+                
+                // Limpar dados temporários
+                unset($_SESSION['temp_user']);
+                
+                // Redireciona com base no tipo de usuário
+                switch ($data['role']) {
+                    case 'admin':
+                        header("Location: ../views/admin/dashboardAdmin.php");
+                        break;
+                    case 'user':
+                        header("Location: ../views/public/dashboard.php");
+                        break;
+                    default:
+                        header("Location: ../views/public/dashboard.php");
+                        break;
+                }
+                exit();
+                
+            } catch (Exception $e) {
+                // Em caso de erro no registro da sessão, mostrar mensagem
+                error_log("Erro ao registrar sessão: " . $e->getMessage());
+                ?>
+                <script>
+                    alert("Erro ao iniciar sessão. Por favor, tente novamente.");
+                    window.location.href = '../views/index.php';
+                </script>
+                <?php
+                exit();
             }
-            exit();
+            
         } else {
 ?>
             <script>

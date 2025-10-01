@@ -55,7 +55,8 @@ CREATE TABLE session_logs (
     INDEX idx_session (session_id),
     INDEX idx_user (user_id)
 );
-
+ALTER TABLE tasks 
+ADD COLUMN priority ENUM('low', 'medium', 'high') DEFAULT 'medium' AFTER due_date;
 
 INSERT INTO users (username, email, password, role, otp, otp_expiry)
 VALUES 

@@ -1,35 +1,56 @@
 <?php
 session_start();
-require_once '../database/DBConnection.php';
-require_once '../models/SessaoDAO.php';
+require_once '../../database/DBConnection.php';
+require_once '../../models/SessaoDAO.php';
 
-// Se não tiver sessão válida
-if (!isset($_SESSION['token_sessao'])) {
-    echo json_encode(['success' => false, 'message' => 'Sessão expirada. Faça login novamente.']);
-    exit;
+// Verificar se é admin
+if ($_SESSION['role'] !== 'admin') {
+    die('Acesso negado.');
 }
 
-// Monta payload
-$data = [
-    'acao' => 'listar',
-    'token_sessao' => $_SESSION['token_sessao']
-];
+try {
+    $conn = DBConnection::getInstance();
+    $stmt = $conn->prepare("SELECT * FROM users ORDER BY created_at DESC");
+    $stmt->execute();
+    $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Chama a API
-$ch = curl_init('http://localhost/Api/api/users.php');
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_POST, true);
-curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+    if (empty($usuarios)) {
+        echo '<p>Nenhum usuário encontrado.</p>';
+        exit;
+    }
 
-$response = curl_exec($ch);
+    echo '<table class="table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Email</th>
+                    <th>Tipo</th>
+                    <th>Status</th>
+                    <th>Data Registro</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>';
 
-if (curl_errno($ch)) {
-    echo json_encode(['success' => false, 'message' => 'Erro na requisição: ' . curl_error($ch)]);
-    curl_close($ch);
-    exit;
+    foreach ($usuarios as $usuario) {
+        echo '<tr>
+                <td>' . $usuario['id'] . '</td>
+                <td>' . htmlspecialchars($usuario['email']) . '</td>
+                <td><span class="badge ' . ($usuario['role'] === 'admin' ? 'badge-primary' : 'badge-info') . '">' . $usuario['role'] . '</span></td>
+                <td><span class="badge ' . ($usuario['status'] === 'active' ? 'badge-success' : 'badge-danger') . '">' . $usuario['status'] . '</span></td>
+                <td>' . date('d/m/Y H:i', strtotime($usuario['created_at'])) . '</td>
+                <td>
+                    <button class="btn btn-primary btn-sm" onclick="openUserModal(' . $usuario['id'] . ')">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteUser(' . $usuario['id'] . ')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+              </tr>';
+    }
+
+    echo '</tbody></table>';
+} catch (PDOException $e) {
+    echo '<p>Erro ao carregar usuários: ' . $e->getMessage() . '</p>';
 }
-curl_close($ch);
-
-echo $response;
-exit;

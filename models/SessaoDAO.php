@@ -1,5 +1,6 @@
 <?php
-require_once '../database/DBConnection.php';
+
+require_once __DIR__ . '/../database/DBConnection.php';
 
 class SessaoDAO {
     private $tabela = 'session_logs';
@@ -7,19 +8,16 @@ class SessaoDAO {
 
     public function __construct($conn = null) {
         try {
-            // Se nenhuma conexão foi fornecida, usa a instância singleton
             if ($conn === null) {
                 $this->conn = DBConnection::getInstance();
             } else {
                 $this->conn = $conn;
             }
             
-            // Verifica se a conexão é válida
             if ($this->conn === null) {
                 throw new Exception('Falha ao obter conexão com o banco de dados');
             }
         } catch (Exception $e) {
-            // Em vez de enviar resposta HTTP, apenas registre o erro
             error_log('Erro ao inicializar conexão: ' . $e->getMessage());
             throw new Exception('Erro ao inicializar conexão com o banco de dados');
         }
@@ -78,6 +76,40 @@ class SessaoDAO {
         } catch (Exception $e) {
             error_log('Erro ao invalidar sessão: ' . $e->getMessage());
             throw new Exception('Erro ao invalidar sessão');
+        }
+    }
+
+    // Nova função: Verificar sessões expiradas (para limpeza)
+    public function limparSessoesExpiradas($tempoExpiracaoHoras = 24) {
+        try {
+            $sql = "UPDATE $this->tabela 
+                    SET logout_time = NOW() 
+                    WHERE logout_time IS NULL 
+                    AND login_time < DATE_SUB(NOW(), INTERVAL :hours HOUR)";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(':hours', $tempoExpiracaoHoras, PDO::PARAM_INT);
+            
+            return $stmt->execute();
+        } catch (Exception $e) {
+            error_log('Erro ao limpar sessões expiradas: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    // Nova função: Obter todas as sessões ativas de um usuário
+    public function obterSessoesAtivasUsuario($userId) {
+        try {
+            $sql = "SELECT * FROM $this->tabela 
+                    WHERE user_id = :userId AND logout_time IS NULL 
+                    ORDER BY login_time DESC";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(':userId', $userId, PDO::PARAM_INT);
+            $stmt->execute();
+            
+            return $stmt->fetchAll(PDO::FETCH_OBJ);
+        } catch (Exception $e) {
+            error_log('Erro ao obter sessões ativas: ' . $e->getMessage());
+            return [];
         }
     }
 }

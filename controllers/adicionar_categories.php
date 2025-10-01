@@ -7,15 +7,15 @@ require_once '../models/SessaoDAO.php';
 try {
     $conn = DBConnection::getInstance();
     $sessaoDAO = new SessaoDAO($conn);
-
+    
     $sessionId = session_id();
     $sessaoAtiva = $sessaoDAO->selecionarSessao($sessionId);
-
+    
     if (!$sessaoAtiva || !isset($_SESSION['user_id'])) {
         echo json_encode(['success' => false, 'message' => 'Sessão expirada ou inválida.']);
         exit;
     }
-
+    
     // Verificar se o usuário da sessão corresponde ao usuário logado
     if ($sessaoAtiva->user_id != $_SESSION['user_id']) {
         $sessaoDAO->invalidarSessao($sessionId);
@@ -23,21 +23,31 @@ try {
         echo json_encode(['success' => false, 'message' => 'Sessão inválida.']);
         exit;
     }
-
+    
     $user_id = $_SESSION['user_id'];
+    
 } catch (Exception $e) {
     error_log("Erro ao verificar sessão: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Erro interno do servidor.']);
     exit;
 }
 
+$name = $_POST['name'] ?? null;
+
+// Validação básica
+if (empty($name)) {
+    echo json_encode(['success' => false, 'message' => 'Nome da categoria é obrigatório.']);
+    exit;
+}
+
 $data = [
-    'acao' => 'listar',
+    'acao' => 'criar',
     'token_sessao' => session_id(),
-    'user_id' => $user_id
+    'user_id' => $user_id,
+    'name' => $name
 ];
 
-$ch = curl_init('http://localhost/TO-DO%20LIST/api/tasks.php');
+$ch = curl_init('http://localhost/TO-DO LIST/api/categories.php');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
@@ -50,9 +60,8 @@ if (curl_errno($ch)) {
     curl_close($ch);
     exit;
 }
-
 curl_close($ch);
 
-// Retorna a resposta diretamente da API
 echo $response;
 exit;
+?>
